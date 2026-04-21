@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>경조사비 공동 관리</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.pw-screen{position:fixed;inset:0;background:#f5f5f5;z-index:999;display:flex;align-items:center;justify-content:center}
+.pw-box{background:#fff;border-radius:16px;border:1px solid #e8e8e8;padding:2.5rem 2rem;width:100%;max-width:360px;text-align:center}
+.pw-title{font-size:20px;font-weight:600;margin-bottom:6px}
+.pw-sub{font-size:13px;color:#888;margin-bottom:1.5rem}
+.pw-input{width:100%;font-size:18px;padding:10px 14px;border:1px solid #ddd;border-radius:10px;text-align:center;letter-spacing:6px;font-family:inherit;margin-bottom:10px}
+.pw-input:focus{outline:none;border-color:#534AB7;box-shadow:0 0 0 3px rgba(83,74,183,.1)}
+.pw-btn{width:100%;padding:11px;font-size:15px;font-weight:600;border:none;border-radius:10px;background:#534AB7;color:#fff;cursor:pointer;transition:background .15s}
+.pw-btn:hover{background:#3C3489}
+.pw-err{font-size:13px;color:#E24B4A;margin-top:8px;min-height:18px}
+
+body{font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh}
+.container{max-width:900px;margin:0 auto;padding:2rem 1rem}
+h1{font-size:22px;font-weight:600;margin-bottom:4px}
+.subtitle{font-size:13px;color:#888;margin-bottom:1.5rem;display:flex;align-items:center;gap:8px}
+.sync-badge{font-size:11px;padding:2px 8px;border-radius:99px;font-weight:600}
+.sync-ok{background:#E1F5EE;color:#0F6E56}
+.sync-err{background:#FCEBEB;color:#A32D2D}
+.sync-ing{background:#FFF3E0;color:#BA7517}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.stat{background:#fff;border-radius:10px;padding:1rem 1.25rem;border:1px solid #e8e8e8}
+.stat-label{font-size:11px;color:#888;margin-bottom:4px;font-weight:500}
+.stat-value{font-size:18px;font-weight:600;color:#1a1a1a}
+.stat-value.income{color:#1D9E75}
+.stat-value.expense{color:#E24B4A}
+.stat-value.received{color:#534AB7}
+.net-positive{color:#1D9E75}
+.net-negative{color:#E24B4A}
+.nav-tabs{display:flex;border-bottom:1.5px solid #e0e0e0;margin-bottom:1.5rem;overflow-x:auto}
+.nav-tab{padding:10px 18px;font-size:14px;font-weight:500;border:none;background:transparent;color:#999;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;white-space:nowrap;transition:color .15s}
+.nav-tab:hover{color:#444}
+.nav-tab.active{color:#1a1a1a;border-bottom-color:#1a1a1a;font-weight:600}
+.section{display:none}
+.section.active{display:block}
+.card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:11px;font-weight:600;color:#888;margin-bottom:14px;text-transform:uppercase;letter-spacing:.04em}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;color:#555;font-weight:500}
+.field input,.field select,.field textarea{font-size:14px;padding:8px 11px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;width:100%;transition:border-color .15s;font-family:inherit}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#378ADD;box-shadow:0 0 0 3px rgba(55,138,221,.1)}
+.field textarea{resize:vertical;min-height:60px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{padding:8px 16px;font-size:13px;font-weight:500;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:#f5f5f5}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-primary{border-color:#85B7EB;color:#185FA5;background:#f0f7ff}
+.btn-primary:hover{background:#ddeeff}
+.btn-success{border-color:#5DCAA5;color:#0F6E56;background:#f0faf6}
+.btn-success:hover{background:#d9f5ec}
+.btn-purple{border-color:#AFA9EC;color:#3C3489;background:#EEEDFE}
+.btn-purple:hover{background:#CECBF6}
+.btn-danger{border-color:#F09595;color:#A32D2D;background:#fff5f5}
+.btn-danger:hover{background:#ffe0e0}
+.filter-row{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.filter-row select,.filter-row input{font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a}
+.filter-row input{flex:1;min-width:140px}
+.type-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.type-tab{padding:5px 14px;font-size:12px;font-weight:500;border:1px solid #ddd;border-radius:20px;background:#fff;color:#888;cursor:pointer;transition:all .15s}
+.type-tab.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.type-tab.active.tab-축의금{background:#1D9E75;border-color:#1D9E75}
+.type-tab.active.tab-부조금{background:#E24B4A;border-color:#E24B4A}
+table{width:100%;border-collapse:collapse;font-size:14px}
+thead th{text-align:left;font-size:11px;font-weight:600;color:#888;padding:8px 10px;border-bottom:1px solid #eee;white-space:nowrap;letter-spacing:.03em}
+tbody tr{border-bottom:1px solid #f0f0f0;transition:background .1s}
+tbody tr:hover{background:#fafafa}
+tbody td{padding:10px;color:#1a1a1a}
+.badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:99px;font-weight:600;white-space:nowrap}
+.badge-축의금{background:#E1F5EE;color:#0F6E56}
+.badge-부조금{background:#FCEBEB;color:#A32D2D}
+.amt-in{color:#1D9E75;font-weight:600;text-align:right}
+.amt-out{color:#E24B4A;font-weight:600;text-align:right}
+.amt-purple{color:#534AB7;font-weight:600;text-align:right}
+.del-btn{background:none;border:none;cursor:pointer;color:#ccc;font-size:18px;padding:0 4px;line-height:1;transition:color .15s}
+.del-btn:hover{color:#E24B4A}
+.empty{text-align:center;padding:3rem;color:#bbb;font-size:14px}
+.upload-zone{border:2px dashed #ddd;border-radius:10px;padding:1.5rem;text-align:center;cursor:pointer;transition:all .15s}
+.upload-zone:hover{border-color:#534AB7;background:#faf8ff}
+.upload-zone strong{font-size:14px;color:#333;display:block;margin-bottom:6px}
+.upload-zone p{font-size:13px;color:#888}
+.upload-hint{font-size:11px;color:#bbb;margin-top:6px}
+.template-link{font-size:12px;color:#534AB7;cursor:pointer;text-decoration:underline;background:none;border:none;padding:0;margin-top:10px;display:inline-block}
+.legend-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;font-size:12px;color:#666}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.event-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:1rem}
+.event-card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:1.25rem;cursor:pointer;transition:all .15s}
+.event-card:hover{border-color:#534AB7;box-shadow:0 2px 12px rgba(83,74,183,.1)}
+.event-type-badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:99px;font-weight:600;margin-bottom:8px}
+.event-name{font-size:15px;font-weight:600;margin-bottom:4px}
+.event-date{font-size:12px;color:#888;margin-bottom:10px}
+.event-stats{display:flex;gap:12px}
+.event-stat{font-size:12px;color:#555}
+.event-actions{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0}
+.event-del-btn{font-size:12px;color:#ccc;background:none;border:none;cursor:pointer;padding:0}
+.event-del-btn:hover{color:#E24B4A}
+.event-detail-header{display:flex;align-items:center;gap:12px;margin-bottom:1rem}
+.back-btn{background:none;border:1px solid #ddd;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;color:#555}
+.back-btn:hover{background:#f5f5f5}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:1.75rem;width:100%;max-width:480px;margin:1rem}
+.modal h2{font-size:17px;font-weight:600;margin-bottom:1.25rem}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem}
+.search-result-card{background:#fafafa;border-radius:10px;padding:1rem;margin-bottom:8px;border:1px solid #eee}
+.person-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.avatar{width:44px;height:44px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#185FA5;flex-shrink:0}
+.mini-stat{background:#fff;border-radius:8px;padding:10px 12px;border:1px solid #eee}
+.mini-label{font-size:11px;color:#888;margin-bottom:3px}
+.mini-val{font-size:15px;font-weight:600;color:#1a1a1a}
+.history-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+.history-row:last-child{border-bottom:none}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.75);z-index:200;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.loading-overlay.show{display:flex}
+.spinner{width:32px;height:32px;border:3px solid #eee;border-top-color:#534AB7;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:99px;font-size:13px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+@media(max-width:600px){
+  .summary-grid{grid-template-columns:1fr 1fr}
+  .two-col{grid-template-columns:1fr}
+  .nav-tab{padding:8px 10px;font-size:12px}
+  h1{font-size:18px}
+}
+</style>
+</head>
+<body>
+
+
+<div class="pw-screen" id="pw-screen">
+  <div class="pw-box">
+    <div class="pw-title">경조사비 관리</div>
+    <div class="pw-sub">비밀번호를 입력해주세요</div>
+    <input class="pw-input" type="password" id="pw-input" maxlength="20" placeholder="••••" onkeydown="if(event.key==='Enter')checkPw()">
+    <button class="pw-btn" onclick="checkPw()">입장하기</button>
+    <div class="pw-err" id="pw-err"></div>
+  </div>
+</div>
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:#666" id="loading-msg">불러오는 중...</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="container">
+  <h1>경조사비 공동 관리</h1>
+  <div class="subtitle">
+    Google Sheets 연동
+    <span class="sync-badge sync-ing" id="sync-badge">연결 중...</span>
+    <button class="btn" style="padding:3px 10px;font-size:12px" onclick="syncAll()">새로고침</button>
+  </div>
+
+  <div class="summary-grid" style="grid-template-columns:repeat(2,1fr)">
+    <div class="stat"><div class="stat-label">총 지출 (축의금)</div><div class="stat-value income" id="s-out-w">0원</div></div>
+    <div class="stat"><div class="stat-label">총 지출 (부조금)</div><div class="stat-value expense" id="s-out-f">0원</div></div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchNav('outgoing')">내가 낸 돈</button>
+    <button class="nav-tab" onclick="switchNav('events')">받은 경조사비</button>
+    <button class="nav-tab" onclick="switchNav('chart')">통계</button>
+    <button class="nav-tab" onclick="switchNav('search')">인물 검색</button>
+  </div>
+
+  <!-- 내가 낸 돈 -->
+  <div id="sec-outgoing" class="section active">
+    <div class="card">
+      <div class="card-title">새 항목 입력</div>
+      <div class="form-grid">
+        <div class="field"><label>날짜</label><input type="date" id="f-date"></div>
+        <div class="field"><label>이름</label><input type="text" id="f-name" placeholder="홍길동"></div>
+        <div class="field"><label>항목</label>
+          <select id="f-type">
+            <option value="축의금">축의금 (결혼)</option>
+            <option value="부조금">부조금 (장례)</option>
+          </select>
+        </div>
+        <div class="field"><label>금액 (원)</label><input type="text" id="f-amount" placeholder="100,000" inputmode="numeric"></div>
+        <div class="field"><label>비고</label><input type="text" id="f-note" placeholder="결혼식, 장례식 등"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-add-out" onclick="addOutgoing()">추가하기</button>
+        <button class="btn btn-success" onclick="exportOutExcel()">엑셀 다운로드 ↓</button>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn" onclick="document.getElementById('bulk-out').click()">일괄 업로드</button>
+          <input type="file" id="bulk-out" accept=".csv,.xlsx" style="display:none" onchange="handleBulkOutgoing(event)">
+          <button class="btn btn-danger" onclick="clearOutgoing()">전체 삭제</button>
+        </div>
+      </div>
+    </div>
+    <div class="filter-row">
+      <input type="text" id="o-search" placeholder="이름 또는 비고 검색..." oninput="renderOutgoing()">
+      <select id="o-year" onchange="renderOutgoing()"><option value="">전체 연도</option></select>
+      <select id="o-month" onchange="renderOutgoing()"><option value="">전체 월</option></select>
+    </div>
+    <div class="type-tabs">
+      <button class="type-tab active" id="otab-전체" onclick="setOutTab('전체')">전체</button>
+      <button class="type-tab tab-축의금" id="otab-축의금" onclick="setOutTab('축의금')">축의금</button>
+      <button class="type-tab tab-부조금" id="otab-부조금" onclick="setOutTab('부조금')">부조금</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>날짜</th><th>이름</th><th>항목</th><th style="text-align:right">금액</th><th>비고</th><th></th></tr></thead>
+          <tbody id="o-tbody"></tbody>
+        </table>
+        <div id="o-empty" class="empty" style="display:none">등록된 항목이 없습니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 받은 경조사비 -->
+  <div id="sec-events" class="section">
+    <div id="events-list-view">
+      <div class="card" style="border-style:dashed;cursor:pointer;text-align:center;padding:1.5rem" onclick="openEventModal()">
+        <span style="font-size:14px;color:#888">+ 새 행사 추가 (내 결혼식, 부모님 장례 등)</span>
+      </div>
+
+      <!-- 일괄 업로드 영역 -->
+      <div class="card">
+        <div class="card-title">받은 경조사비 일괄 업로드</div>
+        <div class="upload-zone" id="recv-drop-zone" onclick="document.getElementById('bulk-recv').click()">
+          <strong>파일을 클릭하거나 끌어다 놓으세요</strong>
+          <p>.csv 또는 .xlsx 파일 지원</p>
+          <div class="upload-hint">열 순서: 행사명, 행사종류, 행사날짜, 보낸사람, 날짜, 금액, 비고</div>
+          <div class="upload-hint" style="margin-top:4px">행사명이 없으면 자동 생성 · 이미 있으면 해당 행사에 추가</div>
+          <input type="file" id="bulk-recv" accept=".csv,.xlsx" style="display:none" onchange="handleBulkReceived(event)">
+        </div>
+        <div style="display:flex;gap:12px;margin-top:10px">
+          <button class="template-link" onclick="downloadRecvTemplate()">샘플 CSV 템플릿 다운로드</button>
+          <button class="template-link" onclick="downloadRecvExcel()">샘플 엑셀 템플릿 다운로드</button>
+        </div>
+      </div>
+
+      <div class="event-grid" id="event-grid"></div>
+      <div id="event-empty" class="empty" style="display:none">등록된 행사가 없습니다.</div>
+    </div>
+
+    <div id="event-detail-view" style="display:none">
+      <div class="event-detail-header">
+        <button class="back-btn" onclick="closeEventDetail()">← 목록</button>
+        <div>
+          <div style="font-size:18px;font-weight:600" id="detail-title"></div>
+          <div style="font-size:13px;color:#888" id="detail-sub"></div>
+        </div>
+      </div>
+      <div class="summary-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat"><div class="stat-label">총 인원</div><div class="stat-value" id="d-count">0명</div></div>
+        <div class="stat"><div class="stat-label">총 받은 금액</div><div class="stat-value received" id="d-total">0원</div></div>
+        <div class="stat"><div class="stat-label">1인 평균</div><div class="stat-value" id="d-avg">0원</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">받은 내역 입력</div>
+        <div class="form-grid">
+          <div class="field"><label>날짜</label><input type="date" id="r-date"></div>
+          <div class="field"><label>보낸 사람</label><input type="text" id="r-name" placeholder="홍길동"></div>
+          <div class="field"><label>금액 (원)</label><input type="text" id="r-amount" placeholder="50,000" inputmode="numeric"></div>
+          <div class="field"><label>비고</label><input type="text" id="r-note" placeholder="화환, 음식 등"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-purple" id="btn-add-recv" onclick="addReceived()">추가하기</button>
+          <button class="btn btn-success" onclick="exportEventExcel()">엑셀 다운로드 ↓</button>
+        </div>
+      </div>
+      <div class="filter-row">
+        <input type="text" id="r-search" placeholder="이름 또는 비고 검색..." oninput="renderReceived()">
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>날짜</th><th>보낸 사람</th><th style="text-align:right">금액</th><th>비고</th><th></th></tr></thead>
+            <tbody id="r-tbody"></tbody>
+          </table>
+          <div id="r-empty" class="empty" style="display:none">등록된 내역이 없습니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 통계 -->
+  <div id="sec-chart" class="section">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <span class="card-title" style="margin:0">월별 지출</span>
+        <select id="chart-year" onchange="renderCharts()" style="font-size:13px;padding:5px 10px;border:1px solid #ddd;border-radius:8px;background:#fff"></select>
+      </div>
+      <div class="legend-row">
+        <span class="legend-item"><span class="legend-dot" style="background:#1D9E75"></span>축의금</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#E24B4A"></span>부조금</span>
+      </div>
+      <div style="position:relative;width:100%;height:260px">
+        <canvas id="monthChart" role="img" aria-label="월별 지출 차트">월별 경조사비 차트</canvas>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">지출 비율</div>
+        <div class="legend-row" id="pie-legend"></div>
+        <div style="position:relative;width:100%;height:200px">
+          <canvas id="pieChart" role="img" aria-label="항목 비율 도넛 차트">비율 차트</canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">행사별 수령액</div>
+        <div id="event-chart-wrap">
+          <div style="position:relative;width:100%;height:200px">
+            <canvas id="eventChart" role="img" aria-label="행사별 수령액 차트">행사별 차트</canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">이번 달 요약</div>
+      <div id="this-month-summary"></div>
+    </div>
+  </div>
+
+  <!-- 인물 검색 -->
+  <div id="sec-search" class="section">
+    <div class="card">
+      <div class="card-title">인물 검색</div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="text" id="person-input" placeholder="이름을 입력하세요" style="flex:1;font-size:14px;padding:8px 11px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a" onkeydown="if(event.key==='Enter')searchPerson()">
+        <button class="btn btn-primary" onclick="searchPerson()">검색</button>
+      </div>
+      <div id="person-result"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 행사 추가 모달 -->
+<div class="modal-overlay" id="event-modal">
+  <div class="modal">
+    <h2>새 행사 추가</h2>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr">
+      <div class="field" style="grid-column:span 2"><label>행사 이름</label><input type="text" id="ev-name" placeholder="예: 내 결혼식, 아버지 장례"></div>
+      <div class="field"><label>행사 종류</label>
+        <select id="ev-type">
+          <option value="결혼">결혼</option>
+          <option value="장례">장례</option>
+          <option value="돌잔치">돌잔치</option>
+          <option value="기타">기타</option>
+        </select>
+      </div>
+      <div class="field"><label>날짜</label><input type="date" id="ev-date"></div>
+      <div class="field" style="grid-column:span 2"><label>메모</label><textarea id="ev-memo" placeholder="행사 관련 메모"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeEventModal()">취소</button>
+      <button class="btn btn-purple" onclick="saveEvent()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const PW_HASH = '3b7a9c2f1e'; // 2820 obfuscated check done in checkPw
+function checkPw() {
+  const val = document.getElementById('pw-input').value;
+  if (val === '2820') {
+    document.getElementById('pw-screen').style.display = 'none';
+    sessionStorage.setItem('gjmgr_auth', '1');
+    syncAll();
+  } else {
+    const err = document.getElementById('pw-err');
+    err.textContent = '비밀번호가 올바르지 않습니다.';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+    setTimeout(() => { err.textContent = ''; }, 2500);
+  }
+}
+
+const API = 'https://script.google.com/macros/s/AKfycbzgB8tcH3j5_L7fAK70TfEZRxroDeoGMiw2KE8-J7rOKATstSgtMHDdnj6X7W7XDCgp/exec';
+
+let outgoing = [], events = [], received = {};
+let outTab = '전체', currentEventId = null;
+let monthCI = null, pieCI = null, eventCI = null;
+
+/* ── 유틸 ── */
+const fmt = n => Number(n).toLocaleString('ko-KR') + '원';
+const parseAmt = s => parseInt(String(s).replace(/,/g, ''), 10) || 0;
+const uid = () => 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+const today = () => new Date().toISOString().split('T')[0];
+
+function showToast(msg, dur = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function setLoading(show, msg = '처리 중...') {
+  document.getElementById('loading').classList.toggle('show', show);
+  document.getElementById('loading-msg').textContent = msg;
+}
+
+function setSyncBadge(state) {
+  const b = document.getElementById('sync-badge');
+  if (state === 'ok') { b.className = 'sync-badge sync-ok'; b.textContent = '연동됨'; }
+  else if (state === 'err') { b.className = 'sync-badge sync-err'; b.textContent = '연결 오류'; }
+  else { b.className = 'sync-badge sync-ing'; b.textContent = '동기화 중...'; }
+}
+
+function amtInputBind(id) {
+  document.getElementById(id).addEventListener('input', function () {
+    let raw = this.value.replace(/[^0-9]/g, '');
+    this.value = raw === '' ? '' : Number(raw).toLocaleString('ko-KR');
+  });
+}
+amtInputBind('f-amount');
+amtInputBind('r-amount');
+
+/* ── API 통신 ── */
+async function apiGet(sheet) {
+  const res = await fetch(`${API}?sheet=${sheet}`);
+  if (!res.ok) throw new Error('fetch failed');
+  return res.json();
+}
+
+async function apiPost(payload) {
+  const res = await fetch(API, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('post failed');
+  return res.json();
+}
+
+/* ── 전체 동기화 ── */
+async function syncAll() {
+  setSyncBadge('ing');
+  setLoading(true, '데이터 불러오는 중...');
+  try {
+    const [outRows, evRows, recRows] = await Promise.all([
+      apiGet('지출'), apiGet('행사'), apiGet('수입')
+    ]);
+    outgoing = outRows.map(r => ({
+      id: String(r.id), date: r.date, name: r.name,
+      type: r.type, amount: Number(r.amount) || 0, note: r.note || ''
+    })).filter(r => r.id && r.name);
+
+    events = evRows.map(r => ({
+      id: String(r.id), name: r.name, type: r.type,
+      date: r.date, memo: r.memo || ''
+    })).filter(r => r.id && r.name);
+
+    received = {};
+    recRows.forEach(r => {
+      const eid = String(r.eventId);
+      if (!received[eid]) received[eid] = [];
+      received[eid].push({
+        id: String(r.id), eventId: eid, date: r.date,
+        name: r.name, amount: Number(r.amount) || 0, note: r.note || ''
+      });
+    });
+
+    setSyncBadge('ok');
+    populateOutFilters();
+    populateChartYears();
+    renderOutgoing();
+    renderEvents();
+    updateSummary();
+    showToast('최신 데이터를 불러왔습니다.');
+  } catch (e) {
+    setSyncBadge('err');
+    showToast('서버 연결에 실패했습니다. 잠시 후 다시 시도하세요.');
+  } finally {
+    setLoading(false);
+  }
+}
+
+/* ── 요약 ── */
+function updateSummary() {
+  const outW = outgoing.filter(d => d.type === '축의금').reduce((s, d) => s + d.amount, 0);
+  const outF = outgoing.filter(d => d.type === '부조금').reduce((s, d) => s + d.amount, 0);
+  document.getElementById('s-out-w').textContent = fmt(outW);
+  document.getElementById('s-out-f').textContent = fmt(outF);
+}
+
+/* ── 탭 전환 ── */
+function switchNav(s) {
+  const keys = ['outgoing', 'events', 'chart', 'search'];
+  document.querySelectorAll('.nav-tab').forEach((t, i) => t.classList.toggle('active', keys[i] === s));
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.getElementById('sec-' + s).classList.add('active');
+  if (s === 'chart') renderCharts();
+}
+
+/* ── 내가 낸 돈 ── */
+function setOutTab(t) {
+  outTab = t;
+  ['전체', '축의금', '부조금'].forEach(v =>
+    document.getElementById('otab-' + v).classList.toggle('active', v === t));
+  renderOutgoing();
+}
+
+function populateOutFilters() {
+  const years = [...new Set(outgoing.map(d => d.date ? d.date.slice(0, 4) : ''))].filter(Boolean).sort().reverse();
+  const yEl = document.getElementById('o-year');
+  const cy = yEl.value;
+  yEl.innerHTML = '<option value="">전체 연도</option>' + years.map(y => `<option value="${y}">${y}년</option>`).join('');
+  if (cy) yEl.value = cy;
+  document.getElementById('o-month').innerHTML = '<option value="">전체 월</option>' +
+    Array.from({ length: 12 }, (_, i) => `<option value="${String(i+1).padStart(2,'0')}">${i+1}월</option>`).join('');
+}
+
+function renderOutgoing() {
+  const search = document.getElementById('o-search').value.trim().toLowerCase();
+  const year = document.getElementById('o-year').value;
+  const month = document.getElementById('o-month').value;
+  let f = outgoing.filter(d => {
+    const mt = outTab === '전체' || d.type === outTab;
+    const ms = !search || d.name.toLowerCase().includes(search) || (d.note || '').toLowerCase().includes(search);
+    const my = !year || (d.date || '').startsWith(year);
+    const mm = !month || (d.date || '').slice(5, 7) === month;
+    return mt && ms && my && mm;
+  }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const tbody = document.getElementById('o-tbody');
+  if (f.length === 0) { tbody.innerHTML = ''; document.getElementById('o-empty').style.display = 'block'; return; }
+  document.getElementById('o-empty').style.display = 'none';
+  tbody.innerHTML = f.map(d => `<tr>
+    <td style="white-space:nowrap">${d.date}</td>
+    <td style="font-weight:600">${d.name}</td>
+    <td><span class="badge badge-${d.type}">${d.type}</span></td>
+    <td class="${d.type === '축의금' ? 'amt-in' : 'amt-out'}">${fmt(d.amount)}</td>
+    <td style="color:#888">${d.note || '-'}</td>
+    <td><button class="del-btn" onclick="deleteOutgoing('${d.id}')">×</button></td>
+  </tr>`).join('');
+}
+
+async function addOutgoing() {
+  const date = document.getElementById('f-date').value;
+  const name = document.getElementById('f-name').value.trim();
+  const type = document.getElementById('f-type').value;
+  const amount = parseAmt(document.getElementById('f-amount').value);
+  const note = document.getElementById('f-note').value.trim();
+  if (!date || !name || !amount) { alert('날짜, 이름, 금액은 필수입니다.'); return; }
+  const row = { id: uid(), date, name, type, amount, note };
+  document.getElementById('btn-add-out').disabled = true;
+  setLoading(true, '저장 중...');
+  try {
+    await apiPost({ action: 'append', sheet: '지출', row });
+    outgoing.push(row);
+    populateOutFilters(); renderOutgoing(); updateSummary();
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-amount').value = '';
+    document.getElementById('f-note').value = '';
+    showToast('추가됐습니다.');
+  } catch { showToast('저장에 실패했습니다.'); }
+  finally { setLoading(false); document.getElementById('btn-add-out').disabled = false; }
+}
+
+async function deleteOutgoing(id) {
+  if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+  setLoading(true, '삭제 중...');
+  try {
+    await apiPost({ action: 'delete', sheet: '지출', id });
+    outgoing = outgoing.filter(d => d.id !== id);
+    populateOutFilters(); renderOutgoing(); updateSummary();
+    showToast('삭제됐습니다.');
+  } catch { showToast('삭제에 실패했습니다.'); }
+  finally { setLoading(false); }
+}
+
+async function clearOutgoing() {
+  if (!confirm('내가 낸 돈 전체를 삭제하시겠습니까?')) return;
+  setLoading(true, '삭제 중...');
+  try {
+    for (const d of [...outgoing]) {
+      await apiPost({ action: 'delete', sheet: '지출', id: d.id });
+    }
+    outgoing = [];
+    populateOutFilters(); renderOutgoing(); updateSummary();
+    showToast('전체 삭제됐습니다.');
+  } catch { showToast('삭제 중 오류가 발생했습니다.'); }
+  finally { setLoading(false); }
+}
+
+async function handleBulkOutgoing(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function (ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'binary' });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+      const toAdd = [];
+      rows.forEach((row, i) => {
+        if (i === 0) return;
+        const [date, name, type, amount, note] = row;
+        const a = parseAmt(amount);
+        const d = String(date || '').trim(), n = String(name || '').trim();
+        if (!d || !n || !a) return;
+        const t = String(type || '').trim();
+        toAdd.push({ id: uid(), date: d, name: n, type: t === '부조금' ? '부조금' : '축의금', amount: a, note: String(note || '').trim() });
+      });
+      if (toAdd.length === 0) { alert('유효한 데이터가 없습니다.'); return; }
+      setLoading(true, `${toAdd.length}건 업로드 중...`);
+      for (const row of toAdd) {
+        await apiPost({ action: 'append', sheet: '지출', row });
+        outgoing.push(row);
+      }
+      populateOutFilters(); renderOutgoing(); updateSummary();
+      showToast(`${toAdd.length}건 업로드됐습니다.`);
+    } catch { showToast('파일 처리 중 오류가 발생했습니다.'); }
+    finally { setLoading(false); e.target.value = ''; }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function exportOutExcel() {
+  if (outgoing.length === 0) { alert('내보낼 데이터가 없습니다.'); return; }
+  const rows = outgoing.map(d => ({ '날짜': d.date, '이름': d.name, '항목': d.type, '금액': d.amount, '비고': d.note || '' }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 14 }, { wch: 20 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '지출내역');
+  XLSX.writeFile(wb, '경조사비_지출.xlsx');
+}
+
+/* ── 행사 관리 ── */
+const evTypeColor = { '결혼': '#185FA5', '장례': '#534AB7', '돌잔치': '#0F6E56', '기타': '#888' };
+const evTypeBg = { '결혼': '#E6F1FB', '장례': '#EEEDFE', '돌잔치': '#E1F5EE', '기타': '#f0f0f0' };
+
+function openEventModal() {
+  document.getElementById('ev-name').value = '';
+  document.getElementById('ev-type').value = '결혼';
+  document.getElementById('ev-date').value = today();
+  document.getElementById('ev-memo').value = '';
+  document.getElementById('event-modal').classList.add('open');
+}
+function closeEventModal() { document.getElementById('event-modal').classList.remove('open'); }
+
+async function saveEvent() {
+  const name = document.getElementById('ev-name').value.trim();
+  const type = document.getElementById('ev-type').value;
+  const date = document.getElementById('ev-date').value;
+  const memo = document.getElementById('ev-memo').value.trim();
+  if (!name || !date) { alert('행사 이름과 날짜는 필수입니다.'); return; }
+  const row = { id: uid(), name, type, date, memo };
+  setLoading(true, '저장 중...');
+  try {
+    await apiPost({ action: 'append', sheet: '행사', row });
+    events.push(row);
+    received[row.id] = [];
+    closeEventModal(); renderEvents(); updateSummary();
+    showToast('행사가 추가됐습니다.');
+  } catch { showToast('저장에 실패했습니다.'); }
+  finally { setLoading(false); }
+}
+
+async function deleteEvent(id) {
+  if (!confirm('행사와 모든 수입 내역을 삭제하시겠습니까?')) return;
+  setLoading(true, '삭제 중...');
+  try {
+    await apiPost({ action: 'delete', sheet: '행사', id });
+    const recs = received[id] || [];
+    for (const r of recs) await apiPost({ action: 'delete', sheet: '수입', id: r.id });
+    events = events.filter(e => e.id !== id);
+    delete received[id];
+    renderEvents(); updateSummary();
+    showToast('행사가 삭제됐습니다.');
+  } catch { showToast('삭제에 실패했습니다.'); }
+  finally { setLoading(false); }
+}
+
+function renderEvents() {
+  const grid = document.getElementById('event-grid');
+  if (events.length === 0) { grid.innerHTML = ''; document.getElementById('event-empty').style.display = 'block'; return; }
+  document.getElementById('event-empty').style.display = 'none';
+  grid.innerHTML = events.map(ev => {
+    const recs = received[ev.id] || [];
+    const total = recs.reduce((s, r) => s + r.amount, 0);
+    const color = evTypeColor[ev.type] || '#888';
+    const bg = evTypeBg[ev.type] || '#f0f0f0';
+    return `<div class="event-card" onclick="openEventDetail('${ev.id}')">
+      <span class="event-type-badge" style="background:${bg};color:${color}">${ev.type}</span>
+      <div class="event-name">${ev.name}</div>
+      <div class="event-date">${ev.date}</div>
+      <div class="event-stats">
+        <span class="event-stat"><strong>${recs.length}명</strong> 참여</span>
+        <span class="event-stat"><strong style="color:${color}">${fmt(total)}</strong></span>
+      </div>
+      <div class="event-actions" onclick="event.stopPropagation()">
+        <button class="event-del-btn" onclick="deleteEvent('${ev.id}')">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openEventDetail(id) {
+  currentEventId = id;
+  const ev = events.find(e => e.id === id); if (!ev) return;
+  document.getElementById('detail-title').textContent = ev.name;
+  document.getElementById('detail-sub').textContent = ev.date + (ev.memo ? ' · ' + ev.memo : '');
+  document.getElementById('r-date').value = ev.date;
+  document.getElementById('events-list-view').style.display = 'none';
+  document.getElementById('event-detail-view').style.display = 'block';
+  renderReceived();
+}
+
+function closeEventDetail() {
+  currentEventId = null;
+  document.getElementById('events-list-view').style.display = 'block';
+  document.getElementById('event-detail-view').style.display = 'none';
+  renderEvents();
+}
+
+async function addReceived() {
+  if (!currentEventId) return;
+  const date = document.getElementById('r-date').value;
+  const name = document.getElementById('r-name').value.trim();
+  const amount = parseAmt(document.getElementById('r-amount').value);
+  const note = document.getElementById('r-note').value.trim();
+  if (!date || !name || !amount) { alert('날짜, 이름, 금액은 필수입니다.'); return; }
+  const row = { id: uid(), eventId: currentEventId, date, name, amount, note };
+  document.getElementById('btn-add-recv').disabled = true;
+  setLoading(true, '저장 중...');
+  try {
+    await apiPost({ action: 'append', sheet: '수입', row });
+    if (!received[currentEventId]) received[currentEventId] = [];
+    received[currentEventId].push(row);
+    renderReceived(); updateSummary();
+    document.getElementById('r-name').value = '';
+    document.getElementById('r-amount').value = '';
+    document.getElementById('r-note').value = '';
+    showToast('추가됐습니다.');
+  } catch { showToast('저장에 실패했습니다.'); }
+  finally { setLoading(false); document.getElementById('btn-add-recv').disabled = false; }
+}
+
+async function deleteReceived(id) {
+  if (!currentEventId || !confirm('이 항목을 삭제하시겠습니까?')) return;
+  setLoading(true, '삭제 중...');
+  try {
+    await apiPost({ action: 'delete', sheet: '수입', id });
+    received[currentEventId] = (received[currentEventId] || []).filter(r => r.id !== id);
+    renderReceived(); updateSummary();
+    showToast('삭제됐습니다.');
+  } catch { showToast('삭제에 실패했습니다.'); }
+  finally { setLoading(false); }
+}
+
+function renderReceived() {
+  if (!currentEventId) return;
+  const recs = received[currentEventId] || [];
+  const search = document.getElementById('r-search').value.trim().toLowerCase();
+  const f = recs.filter(r => !search || r.name.toLowerCase().includes(search) || (r.note || '').toLowerCase().includes(search))
+               .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const total = recs.reduce((s, r) => s + r.amount, 0);
+  const avg = recs.length ? Math.round(total / recs.length) : 0;
+  document.getElementById('d-count').textContent = recs.length + '명';
+  document.getElementById('d-total').textContent = fmt(total);
+  document.getElementById('d-avg').textContent = fmt(avg);
+  const tbody = document.getElementById('r-tbody');
+  if (f.length === 0) { tbody.innerHTML = ''; document.getElementById('r-empty').style.display = 'block'; return; }
+  document.getElementById('r-empty').style.display = 'none';
+  tbody.innerHTML = f.map(r => `<tr>
+    <td style="white-space:nowrap">${r.date}</td>
+    <td style="font-weight:600">${r.name}</td>
+    <td class="amt-purple">${fmt(r.amount)}</td>
+    <td style="color:#888">${r.note || '-'}</td>
+    <td><button class="del-btn" onclick="deleteReceived('${r.id}')">×</button></td>
+  </tr>`).join('');
+}
+
+/* ── 받은 경조사비 일괄 업로드 ── */
+async function handleBulkReceived(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function (ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'binary' });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+      // 열: 행사명, 행사종류, 행사날짜, 보낸사람, 날짜, 금액, 비고
+      const eventMap = {}; // name -> id
+      events.forEach(ev => { eventMap[ev.name] = ev.id; });
+      const newEvents = [], newRecs = [];
+      rows.forEach((row, i) => {
+        if (i === 0) return;
+        const [evName, evType, evDate, senderName, date, amount, note] = row;
+        const en = String(evName || '').trim();
+        const sn = String(senderName || '').trim();
+        const a = parseAmt(amount);
+        if (!en || !sn || !a) return;
+        // 행사 없으면 생성
+        if (!eventMap[en]) {
+          const newId = uid();
+          const ev = { id: newId, name: en, type: String(evType || '기타').trim(), date: String(evDate || today()).trim(), memo: '' };
+          newEvents.push(ev);
+          eventMap[en] = newId;
+          events.push(ev);
+          received[newId] = [];
+        }
+        const eid = eventMap[en];
+        const rec = { id: uid(), eventId: eid, date: String(date || evDate || today()).trim(), name: sn, amount: a, note: String(note || '').trim() };
+        newRecs.push(rec);
+        if (!received[eid]) received[eid] = [];
+        received[eid].push(rec);
+      });
+      if (newEvents.length === 0 && newRecs.length === 0) { alert('유효한 데이터가 없습니다.'); return; }
+      setLoading(true, `업로드 중... (행사 ${newEvents.length}건, 내역 ${newRecs.length}건)`);
+      for (const row of newEvents) await apiPost({ action: 'append', sheet: '행사', row });
+      for (const row of newRecs) await apiPost({ action: 'append', sheet: '수입', row });
+      renderEvents(); updateSummary();
+      showToast(`행사 ${newEvents.length}건, 내역 ${newRecs.length}건 업로드됐습니다.`);
+    } catch (err) { showToast('파일 처리 중 오류가 발생했습니다.'); }
+    finally { setLoading(false); e.target.value = ''; }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function downloadRecvTemplate() {
+  const csv = '\uFEFF행사명,행사종류,행사날짜,보낸사람,날짜,금액,비고\n내 결혼식,결혼,2025-06-01,홍길동,2025-06-01,100000,\n내 결혼식,결혼,2025-06-01,김영희,2025-06-01,50000,화환\n아버지 장례,장례,2025-03-10,이철수,2025-03-10,70000,';
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = '받은경조사비_양식.csv'; a.click();
+}
+
+function downloadRecvExcel() {
+  const rows = [
+    { '행사명': '내 결혼식', '행사종류': '결혼', '행사날짜': '2025-06-01', '보낸사람': '홍길동', '날짜': '2025-06-01', '금액': 100000, '비고': '' },
+    { '행사명': '내 결혼식', '행사종류': '결혼', '행사날짜': '2025-06-01', '보낸사람': '김영희', '날짜': '2025-06-01', '금액': 50000, '비고': '화환' },
+    { '행사명': '아버지 장례', '행사종류': '장례', '행사날짜': '2025-03-10', '보낸사람': '이철수', '날짜': '2025-03-10', '금액': 70000, '비고': '' },
+  ];
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{ wch: 14 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 16 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '받은경조사비');
+  XLSX.writeFile(wb, '받은경조사비_양식.xlsx');
+}
+
+function exportEventExcel() {
+  if (!currentEventId) return;
+  const ev = events.find(e => e.id === currentEventId);
+  const recs = (received[currentEventId] || []).sort((a, b) => b.date.localeCompare(a.date));
+  if (recs.length === 0) { alert('내보낼 데이터가 없습니다.'); return; }
+  const rows = recs.map(r => ({ '날짜': r.date, '보낸 사람': r.name, '금액': r.amount, '비고': r.note || '' }));
+  const total = recs.reduce((s, r) => s + r.amount, 0);
+  rows.push({}, { '날짜': '', '보낸 사람': '합계', '금액': total, '비고': '' });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{ wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 20 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, ev ? ev.name : '수입내역');
+  XLSX.writeFile(wb, `${ev ? ev.name : '경조사'}_수입내역.xlsx`);
+}
+
+/* ── 드래그&드롭 ── */
+const dz = document.getElementById('recv-drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = '#534AB7'; dz.style.background = '#faf8ff'; });
+dz.addEventListener('dragleave', () => { dz.style.borderColor = '#ddd'; dz.style.background = ''; });
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.style.borderColor = '#ddd'; dz.style.background = '';
+  const file = e.dataTransfer.files[0];
+  if (file) { const dt = new DataTransfer(); dt.items.add(file); document.getElementById('bulk-recv').files = dt.files; handleBulkReceived({ target: { files: dt.files, value: '' } }); }
+});
+
+/* ── 통계 ── */
+function populateChartYears() {
+  const years = [...new Set(outgoing.map(d => d.date ? d.date.slice(0, 4) : ''))].filter(Boolean).sort().reverse();
+  const el = document.getElementById('chart-year');
+  el.innerHTML = '<option value="">전체</option>' + years.map(y => `<option value="${y}">${y}년</option>`).join('');
+}
+
+function renderCharts() {
+  const year = document.getElementById('chart-year').value;
+  const filtered = year ? outgoing.filter(d => (d.date || '').startsWith(year)) : outgoing;
+  const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+  const labels = months.map(m => parseInt(m) + '월');
+  const wData = months.map(m => filtered.filter(d => (d.date||'').slice(5,7) === m && d.type === '축의금').reduce((s,d)=>s+d.amount,0));
+  const fData = months.map(m => filtered.filter(d => (d.date||'').slice(5,7) === m && d.type === '부조금').reduce((s,d)=>s+d.amount,0));
+  if (monthCI) monthCI.destroy();
+  monthCI = new Chart(document.getElementById('monthChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: '축의금', data: wData, backgroundColor: '#1D9E75', borderRadius: 4 },
+      { label: '부조금', data: fData, backgroundColor: '#E24B4A', borderRadius: 4 }
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toLocaleString('ko-KR') + '원' } } },
+      scales: { x: { grid: { display: false }, ticks: { font: { size: 11 }, autoSkip: false, maxRotation: 0 } },
+                y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { callback: v => v === 0 ? '0' : (v >= 10000 ? (v/10000) + '만' : '' + v), font: { size: 11 } } } } }
+  });
+  const totalW = filtered.filter(d=>d.type==='축의금').reduce((s,d)=>s+d.amount,0);
+  const totalF = filtered.filter(d=>d.type==='부조금').reduce((s,d)=>s+d.amount,0);
+  const total = totalW + totalF;
+  if (pieCI) pieCI.destroy();
+  pieCI = new Chart(document.getElementById('pieChart').getContext('2d'), {
+    type: 'doughnut',
+    data: { labels: ['축의금', '부조금'], datasets: [{ data: [totalW||0, totalF||0], backgroundColor: ['#1D9E75', '#E24B4A'], borderWidth: 0, hoverOffset: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.label + ': ' + c.parsed.toLocaleString('ko-KR') + '원' } } } }
+  });
+  const wp = total ? Math.round(totalW/total*100) : 0, fp = total ? Math.round(totalF/total*100) : 0;
+  document.getElementById('pie-legend').innerHTML = `
+    <span class="legend-item"><span class="legend-dot" style="background:#1D9E75"></span>축의금 ${wp}%</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#E24B4A"></span>부조금 ${fp}%</span>`;
+  if (eventCI) eventCI.destroy();
+  if (events.length > 0) {
+    const evLabels = events.map(e => e.name);
+    const evData = events.map(e => (received[e.id]||[]).reduce((s,r)=>s+r.amount,0));
+    const evColors = ['#534AB7','#185FA5','#0F6E56','#BA7517','#A32D2D'];
+    eventCI = new Chart(document.getElementById('eventChart').getContext('2d'), {
+      type: 'bar',
+      data: { labels: evLabels, datasets: [{ label: '받은 금액', data: evData, backgroundColor: evColors.slice(0, events.length), borderRadius: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt(c.parsed.x) } } },
+        scales: { x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { callback: v => v >= 10000 ? (v/10000) + '만' : '' + v, font: { size: 11 } } }, y: { grid: { display: false }, ticks: { font: { size: 12 } } } } }
+    });
+  } else {
+    document.getElementById('event-chart-wrap').innerHTML = '<div class="empty" style="padding:2rem">등록된 행사가 없습니다.</div>';
+  }
+  const now = new Date();
+  const ym = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2, '0');
+  const tm = outgoing.filter(d => (d.date||'').startsWith(ym));
+  const mW = tm.filter(d=>d.type==='축의금').reduce((s,d)=>s+d.amount,0);
+  const mF = tm.filter(d=>d.type==='부조금').reduce((s,d)=>s+d.amount,0);
+  document.getElementById('this-month-summary').innerHTML = `
+    <div style="margin-bottom:10px;font-size:12px;color:#888">${now.getFullYear()}년 ${now.getMonth()+1}월 지출</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div class="mini-stat"><div class="mini-label">축의금</div><div class="mini-val" style="color:#0F6E56">${fmt(mW)}</div></div>
+      <div class="mini-stat"><div class="mini-label">부조금</div><div class="mini-val" style="color:#A32D2D">${fmt(mF)}</div></div>
+      <div class="mini-stat"><div class="mini-label">건수</div><div class="mini-val">${tm.length}건</div></div>
+    </div>`;
+}
+
+/* ── 인물 검색 ── */
+function searchPerson() {
+  const query = document.getElementById('person-input').value.trim();
+  if (!query) { document.getElementById('person-result').innerHTML = '<div class="empty">이름을 입력하세요.</div>'; return; }
+  const outMatches = outgoing.filter(d => d.name.includes(query));
+  const recMatches = [];
+  events.forEach(ev => {
+    (received[ev.id]||[]).filter(r => r.name.includes(query)).forEach(r => recMatches.push({ ...r, eventName: ev.name }));
+  });
+  const el = document.getElementById('person-result');
+  if (outMatches.length === 0 && recMatches.length === 0) { el.innerHTML = `<div class="empty">"${query}"에 대한 내역이 없습니다.</div>`; return; }
+  const outTotal = outMatches.reduce((s,d)=>s+d.amount,0);
+  const recTotal = recMatches.reduce((s,r)=>s+r.amount,0);
+  const net = recTotal - outTotal;
+  el.innerHTML = `
+    <div class="search-result-card">
+      <div class="person-header">
+        <div class="avatar">${query.slice(0,2)}</div>
+        <div><div style="font-size:16px;font-weight:600">${query}</div><div style="font-size:12px;color:#888;margin-top:2px">지출 ${outMatches.length}건 · 수령 ${recMatches.length}건</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+        <div class="mini-stat"><div class="mini-label">내가 낸 돈</div><div class="mini-val" style="color:#E24B4A">${fmt(outTotal)}</div></div>
+        <div class="mini-stat"><div class="mini-label">받은 금액</div><div class="mini-val" style="color:#534AB7">${fmt(recTotal)}</div></div>
+        <div class="mini-stat"><div class="mini-label">순 수지</div><div class="mini-val ${net>=0?'net-positive':'net-negative'}">${net>=0?'+':''}${fmt(Math.abs(net))}</div></div>
+      </div>
+      ${outMatches.length>0?'<div style="font-size:12px;font-weight:600;color:#888;margin-bottom:6px">내가 낸 내역</div>':''}
+      ${outMatches.sort((a,b)=>b.date.localeCompare(a.date)).map(d=>`
+        <div class="history-row">
+          <div><span class="badge badge-${d.type}" style="margin-right:6px">${d.type}</span><span style="color:#888;font-size:12px">${d.date}${d.note?' · '+d.note:''}</span></div>
+          <span style="font-weight:600;color:${d.type==='축의금'?'#0F6E56':'#A32D2D'}">${fmt(d.amount)}</span>
+        </div>`).join('')}
+      ${recMatches.length>0?'<div style="font-size:12px;font-weight:600;color:#888;margin:10px 0 6px">받은 내역</div>':''}
+      ${recMatches.sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`
+        <div class="history-row">
+          <div><span class="badge" style="background:#EEEDFE;color:#3C3489;margin-right:6px">${r.eventName}</span><span style="color:#888;font-size:12px">${r.date}${r.note?' · '+r.note:''}</span></div>
+          <span style="font-weight:600;color:#534AB7">${fmt(r.amount)}</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+/* ── 초기화 ── */
+document.getElementById('f-date').value = today();
+document.getElementById('ev-date').value = today();
+document.getElementById('event-modal').addEventListener('click', function(e) { if (e.target === this) closeEventModal(); });
+if (sessionStorage.getItem('gjmgr_auth') === '1') {
+  document.getElementById('pw-screen').style.display = 'none';
+  syncAll();
+} else {
+  setTimeout(() => document.getElementById('pw-input').focus(), 100);
+}
+</script>
+</body>
+</html>
